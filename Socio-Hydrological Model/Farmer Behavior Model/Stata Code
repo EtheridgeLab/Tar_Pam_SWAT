@@ -1,0 +1,465 @@
+*Stata code for calculating the percentage of farmers willing to accept contract at give EQIP rates
+
+*The following STATA code was used to conduct the econometric modeling analysis highlighted above. The initial part of the code cleans the data and generates variables needed for the analysis. Then the data is reshaped to analyze the discrete choice experiment results. 
+*The mixlogit command is used to provide the coefficients in the analysis discussed above. Furthermore, the “mixlbetas.dta” file is employed to gain individual-specific insights on farmer preferences and WTA values. The WTA values for two contracts are calculated: one with strict nitrogen application limits and one with cover crop requirements. 
+*Finally, the code reveals the calculations for predicting the total acreage enrolled in the program. For this calculation, each farmer whose WTA value was less than the EQUIP payment rate was predicted to enroll in the program. These calculations are explained in greater detail in the previous section. 
+
+*** COMPILATION OF ALL STATA FSD DO-FILES (Mahesh Tapas)
+*** FSD DO FILE 1 ------------------------------------------------------------
+***For save, use, and merge commands, one would need to alter the path to make sense with your computer
+
+use "E:\All\research\CNH2 project\Farmer Survey\Data\Farmer Survey Data Github.dta", clear 
+
+*** Reshaping the Data
+reshape long ce cecert, i(id) j(set)
+
+tab ce, missing
+drop if ce==.
+
+gen choice1=.
+gen choice2=.
+gen choice3=.
+
+gen choicecert1=.
+gen choicecert2=.
+gen choicecert3=.
+
+replace choice1=1 if ce==1
+replace choice2=1 if ce==2
+replace choice3=1 if ce==3
+
+reshape long choice, i(id set) j(alternativeoptions)
+replace choice=0 if choice==.
+destring block, replace
+
+*** Creating Variables for Attribute Levels (Info from Optimal Design)
+
+* N Application (0 is Not Rquired, 1 is Lenient, 2 is Strict)
+generate napplication = ., before(alternative)
+replace napplication = 0 if alternativeoptions==3
+replace napplication = 2 if block==1 & set==1 & alternativeoptions==1
+replace napplication = 1 if block==1 & set==1 & alternativeoptions==2
+replace napplication = 0 if block==1 & set==2 & alternativeoptions==1
+replace napplication = 2 if block==1 & set==2 & alternativeoptions==2
+replace napplication = 1 if block==2 & set==1 & alternativeoptions==1
+replace napplication = 2 if block==2 & set==1 & alternativeoptions==2
+replace napplication = 0 if block==2 & set==2 & alternativeoptions==1
+replace napplication = 1 if block==2 & set==2 & alternativeoptions==2
+replace napplication = 0 if block==3 & set==1 & alternativeoptions==1
+replace napplication = 2 if block==3 & set==1 & alternativeoptions==2
+replace napplication = 1 if block==3 & set==2 & alternativeoptions==1
+replace napplication = 0 if block==3 & set==2 & alternativeoptions==2
+replace napplication = 1 if block==4 & set==1 & alternativeoptions==1
+replace napplication = 0 if block==4 & set==1 & alternativeoptions==2
+replace napplication = 2 if block==4 & set==2 & alternativeoptions==1
+replace napplication = 1 if block==4 & set==2 & alternativeoptions==2
+replace napplication = 0 if block==5 & set==1 & alternativeoptions==1
+replace napplication = 2 if block==5 & set==1 & alternativeoptions==2
+replace napplication = 2 if block==5 & set==2 & alternativeoptions==1
+replace napplication = 1 if block==5 & set==2 & alternativeoptions==2
+
+* Cover Crops (0 is Not Required, 1 is Required)
+generate covercrops = ., before(alternative)
+replace covercrops = 0 if alternativeoptions==3
+replace covercrops = 1 if block==1 & set==1 & alternativeoptions==1
+replace covercrops = 0 if block==1 & set==1 & alternativeoptions==2
+replace covercrops = 1 if block==1 & set==2 & alternativeoptions==1
+replace covercrops = 0 if block==1 & set==2 & alternativeoptions==2
+replace covercrops = 1 if block==2 & set==1 & alternativeoptions==1
+replace covercrops = 0 if block==2 & set==1 & alternativeoptions==2
+replace covercrops = 1 if block==2 & set==2 & alternativeoptions==1
+replace covercrops = 1 if block==2 & set==2 & alternativeoptions==2
+replace covercrops = 1 if block==3 & set==1 & alternativeoptions==1
+replace covercrops = 0 if block==3 & set==1 & alternativeoptions==2
+replace covercrops = 1 if block==3 & set==2 & alternativeoptions==1
+replace covercrops = 1 if block==3 & set==2 & alternativeoptions==2
+replace covercrops = 0 if block==4 & set==1 & alternativeoptions==1
+replace covercrops = 1 if block==4 & set==1 & alternativeoptions==2
+replace covercrops = 1 if block==4 & set==2 & alternativeoptions==1
+replace covercrops = 0 if block==4 & set==2 & alternativeoptions==2
+replace covercrops = 1 if block==5 & set==1 & alternativeoptions==1
+replace covercrops = 1 if block==5 & set==1 & alternativeoptions==2
+replace covercrops = 1 if block==5 & set==2 & alternativeoptions==1
+replace covercrops = 0 if block==5 & set==2 & alternativeoptions==2
+
+* Funding Source (0 is No Source, 1 is State/Federal, 2 is Private)
+generate fundingsource = ., before(alternative)
+replace fundingsource = 0 if alternativeoptions==3
+replace fundingsource = 2 if block==1 & set==1 & alternativeoptions==1
+replace fundingsource = 1 if block==1 & set==1 & alternativeoptions==2
+replace fundingsource = 1 if block==1 & set==2 & alternativeoptions==1
+replace fundingsource = 2 if block==1 & set==2 & alternativeoptions==2
+replace fundingsource = 2 if block==2 & set==1 & alternativeoptions==1
+replace fundingsource = 1 if block==2 & set==1 & alternativeoptions==2
+replace fundingsource = 2 if block==2 & set==2 & alternativeoptions==1
+replace fundingsource = 1 if block==2 & set==2 & alternativeoptions==2
+replace fundingsource = 2 if block==3 & set==1 & alternativeoptions==1
+replace fundingsource = 1 if block==3 & set==1 & alternativeoptions==2
+replace fundingsource = 1 if block==3 & set==2 & alternativeoptions==1
+replace fundingsource = 2 if block==3 & set==2 & alternativeoptions==2
+replace fundingsource = 2 if block==4 & set==1 & alternativeoptions==1
+replace fundingsource = 1 if block==4 & set==1 & alternativeoptions==2
+replace fundingsource = 1 if block==4 & set==2 & alternativeoptions==1
+replace fundingsource = 2 if block==4 & set==2 & alternativeoptions==2
+replace fundingsource = 1 if block==5 & set==1 & alternativeoptions==1
+replace fundingsource = 2 if block==5 & set==1 & alternativeoptions==2
+replace fundingsource = 1 if block==5 & set==2 & alternativeoptions==1
+replace fundingsource = 1 if block==5 & set==2 & alternativeoptions==2
+
+* Payment (0 is $0, 1 is $130, 2 is $100, 3 is $70, 4 is $40, 5 is $10)
+generate payment = ., before(alternative)
+replace payment = 0 if alternativeoptions==3
+replace payment = 1 if block==1 & set==1 & alternativeoptions==1
+replace payment = 5 if block==1 & set==1 & alternativeoptions==2
+replace payment = 2 if block==1 & set==2 & alternativeoptions==1
+replace payment = 3 if block==1 & set==2 & alternativeoptions==2
+replace payment = 4 if block==2 & set==1 & alternativeoptions==1
+replace payment = 5 if block==2 & set==1 & alternativeoptions==2
+replace payment = 4 if block==2 & set==2 & alternativeoptions==1
+replace payment = 1 if block==2 & set==2 & alternativeoptions==2
+replace payment = 5 if block==3 & set==1 & alternativeoptions==1
+replace payment = 4 if block==3 & set==1 & alternativeoptions==2
+replace payment = 3 if block==3 & set==2 & alternativeoptions==1
+replace payment = 1 if block==3 & set==2 & alternativeoptions==2
+replace payment = 2 if block==4 & set==1 & alternativeoptions==1
+replace payment = 3 if block==4 & set==1 & alternativeoptions==2
+replace payment = 4 if block==4 & set==2 & alternativeoptions==1
+replace payment = 2 if block==4 & set==2 & alternativeoptions==2
+replace payment = 3 if block==5 & set==1 & alternativeoptions==1
+replace payment = 5 if block==5 & set==1 & alternativeoptions==2
+replace payment = 2 if block==5 & set==2 & alternativeoptions==1
+replace payment = 1 if block==5 & set==2 & alternativeoptions==2
+
+* Adjust Payment Variable to Dollars
+replace payment = 130 if payment==1
+replace payment = 100 if payment==2
+replace payment = 70 if payment==3
+replace payment = 40 if payment==4
+replace payment = 10 if payment==5
+
+
+*** Creating Dummy Variables
+
+* N Application Dummy Variables
+generate dummylenientn = ., before(covercrops)
+replace dummylenientn = 1 if napplication==1
+replace dummylenientn = 0 if napplication==0 | napplication==2
+
+generate dummystrictn = ., before(covercrops)
+replace dummystrictn = 1 if napplication==2
+replace dummystrictn = 0 if napplication==0 | napplication==1
+
+
+* Funding Source Dummy Variables
+generate dummystatefunding = ., before(payment)
+replace dummystatefunding = 1 if fundingsource==1
+replace dummystatefunding = 0 if fundingsource==0 | fundingsource==2
+
+generate dummyprivatefunding = ., before(payment)
+replace dummyprivatefunding = 1 if fundingsource==2
+replace dummyprivatefunding = 0 if fundingsource==0 | fundingsource==1
+
+
+*** Creating the Alternative Specific Constant (ASC)
+
+* ASC (0 if anything other than status quo, 1 if status quo)
+generate asc = ., before(alternative)
+replace asc = 1 if alternativeoptions==3
+replace asc = 0 if alternativeoptions !=3
+
+*gen Case Variable
+gen case=10*id+set
+
+sort case
+by case: egen totalchosen=total(choice)
+tab totalchosen
+
+***Certainty Adjustment
+gen choice_cert=choice
+replace choice_cert=1 if ce!=3&alternativeoptions==3&cecert<7
+replace choice_cert=0 if ce!=3&alternativeoptions!=3&cecert<7
+
+
+***Our model
+set seed 48292
+set more off 
+mixlogit choice_cert dummystatefunding payment dummystrictn dummylenientn, rand(asc covercrops ) group(case) id(id) nrep(500)
+estat ic
+
+
+mixlbeta dummylenientn dummystrictn dummystatefunding asc covercrops payment if e(sample)==1, sav("D:\All\Advising\Tapas\mixlbetas") replace 
+
+***For save, use, and merge commands, one would need to alter the path to make sense with your computer
+save "D:\All\Advising\Tapas\post mixlogit data.dta", replace
+
+use "D:\All\Advising\Tapas\mixlbetas.dta" , clear
+
+rename dummylenientn bdummylenientn
+rename dummystrictn bdummystrictn
+rename dummystatefunding bdummystatefunding
+rename asc basc
+rename covercrops bcovercrops
+rename payment bpayment
+
+save "D:\All\Advising\Tapas\mixlbetas.dta" , replace
+
+
+use "D:\All\Advising\Tapas\post mixlogit data.dta", clear
+
+duplicates drop id, force
+
+merge 1:1 id using "D:\All\Advising\Tapas\mixlbetas.dta"
+gen ones=1
+drop if bpayment==.
+replace q39_3_1="." if q39_3_1=="?"
+replace q39_3_2="." if q39_3_2=="?"
+destring q39_3_1 q39_3_2, replace 
+replace q7=q39_1_1/q39_3_1 if q7==.
+
+***Contract with strict N limit, state funding 
+gen WTA_StrictN =(basc-bdummystrictn-bdummystatefunding)/bpayment
+
+***Contract with cover crops, state funding 
+gen WTA_CC =(basc-bcovercrops-bdummystatefunding)/bpayment
+
+gen stotalsamp=48
+egen total_acres=total(q7)
+
+****Total in sample: 4,607 acres
+****Total in Tar-Pamlico: 28% of land x 6,400 sq. miles in Tar-Pam * 640 acres in sq. mile = 1,146,880 acres in Tar-Pamlico
+
+****One acre in our sample represents 250 acres in Tar Pam
+
+***Simulation for Strict N restriction
+egen totalSN=count(ones) if WTA_StrictN<=50
+sum totalSN
+scalar stotalSN=r(mean) 
+scalar penrolledSN=stotalSN/stotalsamp
+di penrolledSN
+
+***Total acreage enrolled
+egen total_acreageSN=total(q7) if WTA_StrictN<=50
+sum total_acreageSN
+***Total in sample: 1,382.277
+*total in Tar-Pam = 1,382.277*250 = 345,569 acres at cost of 345,569*50 = $17,278,462 
+
+
+***Simulation for Cover Crops
+egen totalCC=count(ones) if WTA_CC<=70
+sum totalCC
+scalar stotalCC=r(mean) 
+scalar penrolledCC=stotalCC/stotalsamp
+di penrolledCC
+
+***Total acreage enrolled
+egen total_acreageCC=total(q7) if WTA_CC<=50
+sum total_acreageCC
+***Total in sample: 1,539.277
+*total in Tar-Pam = 1,539.277*250 = 384,750 acres at cost of 384,750*50 = $26,932,500
+
+
+
+
+
+
+
+
+
+
+***Alternative mixlogits for robustness
+***Lognormal N restrictions and payment 
+gen dummylenientn_neg=-dummylenientn
+gen dummystrictn_neg=-dummystrictn
+set seed 48292
+set more off 
+mixlogit choice_cert , rand(asc covercrops dummystatefunding payment dummystrictn_neg dummylenientn_neg) group(case) id(id) nrep(500) ln(3) difficult technique(bfgs)
+estat ic
+nlcom exp([Mean]payment)
+nlcom -exp([Mean]dummylenientn_neg)
+nlcom -exp([Mean]dummystrictn_neg)
+
+
+mixlbeta dummylenientn dummystrictn dummystatefunding asc covercrops payment if e(sample)==1, sav("E:\All\Advising\Tapas\stata data\mixlbetas_ln") replace 
+
+save "E:\All\Advising\Tapas\stata data\post mixlogit data.dta", replace
+
+use "E:\All\Advising\Tapas\stata data\mixlbetas_ln.dta" , clear
+
+rename dummylenientn bdummylenientn
+rename dummystrictn bdummystrictn
+rename dummystatefunding bdummystatefunding
+rename asc basc
+rename covercrops bcovercrops
+rename payment bpayment
+
+save "E:\All\Advising\Tapas\stata data\mixlbetas_ln.dta" , replace
+
+
+use "E:\All\Advising\Tapas\stata data\post mixlogit data.dta", clear
+
+duplicates drop id, force
+
+merge 1:1 id using "E:\All\Advising\Tapas\stata data\mixlbetas_ln.dta"
+gen ones=1
+drop if bpayment==.
+replace q39_3_1="." if q39_3_1=="?"
+replace q39_3_2="." if q39_3_2=="?"
+destring q39_3_1 q39_3_2, replace 
+***Reverse signs for N application restriction
+replace bdummystrictn=-bdummystrictn
+replace bdummylenientn=-bdummylenientn
+
+*replace q7=q39_1_1/q39_3_1 if q7==.
+
+***Contract with strict N limit, state funding 
+gen WTA_StrictN =(basc-(bdummystrictn+bdummystatefunding))/bpayment
+
+***Contract with cover crops, state funding 
+gen WTA_CC =(basc-bcovercrops-bdummystatefunding)/bpayment
+
+****Change this for the new data set
+gen stotalsamp=76
+
+destring q7, replace
+tab q7, missing
+sort q7
+tab q39_3_1
+replace q39_3_1="" if q39_3_1=="."
+replace q39_3_1="100" if q39_3_1=="100+"
+destring q39_1_1 q39_3_1, replace
+replace q7=q39_1_1/q39_3_1 if q7==.
+egen total_acres=total(q7)
+
+***Simulation for Strict N restriction
+egen totalSN=count(ones) if WTA_StrictN<=50
+sum totalSN
+scalar stotalSN=r(mean) 
+scalar penrolledSN=stotalSN/stotalsamp
+di penrolledSN
+
+***Total acreage enrolled
+egen total_acreageSN=total(q7) if WTA_StrictN<=50
+
+egen total_acreage = total(q7) 
+sum total_acreageSN
+scalar pacreage_enrolled_SN=total_acreageSN/total_acreage
+gen pacreage_enrolled_SN=total_acreageSN/total_acreage
+sum pacreage_enrolled_SN
+
+
+
+***Simulation for Cover Crops
+egen totalCC=count(ones) if WTA_CC<=75
+sum totalCC
+scalar stotalCC=r(mean) 
+scalar penrolledCC=stotalCC/stotalsamp
+di penrolledCC
+
+***Total acreage enrolled
+egen total_acreageCC=total(q7) if WTA_CC<=75
+sum total_acreageCC
+
+egen total_acreageCC_add=total(q7) if WTA_CC<=75&q24==1
+sum total_acreageCC_add
+
+gen pacreage_enrolled_CC=total_acreageCC/total_acreage
+sum pacreage_enrolled_CC
+
+gen pacreage_enrolled_CC_add=total_acreageCC_add/total_acreage
+sum pacreage_enrolled_CC_add
+
+
+
+****Lognormal payment 
+set seed 48292
+set more off 
+mixlogit choice_cert dummystatefunding  dummystrictn dummylenientn, rand(asc covercrops payment) group(case) id(id) nrep(2000) ln(1) 
+estat ic
+nlcom exp([Mean]payment)
+
+
+mixlbeta dummylenientn dummystrictn dummystatefunding asc covercrops payment if e(sample)==1, sav("E:\All\Advising\Tapas\stata data\mixlbetas_lnpay") replace 
+
+save "E:\All\Advising\Tapas\stata data\post mixlogit data.dta", replace
+
+use "E:\All\Advising\Tapas\stata data\mixlbetas_lnpay.dta" , clear
+
+rename dummylenientn bdummylenientn
+rename dummystrictn bdummystrictn
+rename dummystatefunding bdummystatefunding
+rename asc basc
+rename covercrops bcovercrops
+rename payment bpayment
+
+save "E:\All\Advising\Tapas\stata data\mixlbetas_lnpay.dta" , replace
+
+
+use "E:\All\Advising\Tapas\stata data\post mixlogit data.dta", clear
+
+duplicates drop id, force
+
+merge 1:1 id using "E:\All\Advising\Tapas\stata data\mixlbetas_lnpay.dta"
+gen ones=1
+drop if bpayment==.
+replace q39_3_1="." if q39_3_1=="?"
+replace q39_3_2="." if q39_3_2=="?"
+destring q39_3_1 q39_3_2, replace 
+
+*replace q7=q39_1_1/q39_3_1 if q7==.
+
+***Contract with strict N limit, state funding 
+gen WTA_StrictN =(basc-(bdummystrictn+bdummystatefunding))/bpayment
+
+***Contract with cover crops, state funding 
+gen WTA_CC =(basc-bcovercrops-bdummystatefunding)/bpayment
+
+****Change this for the new data set
+gen stotalsamp=76
+
+destring q7, replace
+tab q7, missing
+sort q7
+tab q39_3_1
+replace q39_3_1="" if q39_3_1=="."
+replace q39_3_1="100" if q39_3_1=="100+"
+destring q39_1_1 q39_3_1, replace
+replace q7=q39_1_1/q39_3_1 if q7==.
+egen total_acres=total(q7)
+
+***Simulation for Strict N restriction
+egen totalSN=count(ones) if WTA_StrictN<=50
+sum totalSN
+scalar stotalSN=r(mean) 
+scalar penrolledSN=stotalSN/stotalsamp
+di penrolledSN
+
+***Total acreage enrolled
+egen total_acreageSN=total(q7) if WTA_StrictN<=50
+
+egen total_acreage = total(q7) 
+sum total_acreageSN
+scalar pacreage_enrolled_SN=total_acreageSN/total_acreage
+gen pacreage_enrolled_SN=total_acreageSN/total_acreage
+sum pacreage_enrolled_SN
+
+
+
+***Simulation for Cover Crops
+egen totalCC=count(ones) if WTA_CC<=75
+sum totalCC
+scalar stotalCC=r(mean) 
+scalar penrolledCC=stotalCC/stotalsamp
+di penrolledCC
+
+***Total acreage enrolled
+egen total_acreageCC=total(q7) if WTA_CC<=75
+sum total_acreageCC
+
+egen total_acreageCC_add=total(q7) if WTA_CC<=75&q24==1
+sum total_acreageCC_add
+
+gen pacreage_enrolled_CC=total_acreageCC/total_acreage
+sum pacreage_enrolled_CC
+
+gen pacreage_enrolled_CC_add=total_acreageCC_add/total_acreage
+sum pacreage_enrolled_CC_add
